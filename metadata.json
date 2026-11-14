@@ -1,0 +1,6 @@
+{
+  "name": "FlowState Wellness",
+  "description": "AI-powered yoga, meditation, breathwork, and holistic wellness sanctuary with Gemini coaching, Firestore persistence, and Google Chat integration.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

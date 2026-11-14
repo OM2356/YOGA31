@@ -1,0 +1,392 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helper Primitives ---
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrapAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'omkarsathe3103@gmail.com';
+    }
+
+    function isAdmin() {
+      return isBootstrapAdmin() || (
+        isVerifiedUser() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidDateKey(val) {
+      return val is string && val.size() == 10 && val.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    // --- Validation Blueprints ---
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+        'userId', 'displayName', 'email', 'photoURL', 'ageRange',
+        'experienceLevel', 'preferredPracticeTime', 'availableMinutes',
+        'primaryGoals', 'preferredStyles', 'waterGlassesToday',
+        'waterGoal', 'waterDateKey', 'themePreference', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'userId', 'displayName', 'email', 'photoURL', 'ageRange',
+        'experienceLevel', 'preferredPracticeTime', 'availableMinutes',
+        'primaryGoals', 'preferredStyles', 'waterGlassesToday',
+        'waterGoal', 'waterDateKey', 'themePreference', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.userId)
+      && (data.userId == request.auth.uid || isAdmin())
+      && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100
+      && data.email is string && data.email.size() >= 3 && data.email.size() <= 160
+      && data.photoURL is string && data.photoURL.size() <= 500
+      && data.ageRange in ['18-24', '25-34', '35-44', '45-54', '55+']
+      && data.experienceLevel in ['Beginner', 'Intermediate', 'Advanced']
+      && data.preferredPracticeTime in ['Morning', 'Midday', 'Evening', 'Flexible']
+      && data.availableMinutes is int && data.availableMinutes >= 5 && data.availableMinutes <= 180
+      && data.primaryGoals is list && data.primaryGoals.size() <= 6
+      && (data.primaryGoals.size() == 0 || data.primaryGoals[0] is string)
+      && data.preferredStyles is list && data.preferredStyles.size() <= 6
+      && (data.preferredStyles.size() == 0 || data.preferredStyles[0] is string)
+      && data.waterGlassesToday is int && data.waterGlassesToday >= 0 && data.waterGlassesToday <= 24
+      && data.waterGoal is int && data.waterGoal >= 1 && data.waterGoal <= 20
+      && isValidDateKey(data.waterDateKey)
+      && data.themePreference in ['light', 'dark']
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidUserProgress(data) {
+      return data.keys().hasAll([
+        'userId', 'favoritePoses', 'completedPoses', 'favoriteMeditations',
+        'bookmarkedArticles', 'readArticles', 'completedLessons', 'quizScores',
+        'reminders', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'userId', 'favoritePoses', 'completedPoses', 'favoriteMeditations',
+        'bookmarkedArticles', 'readArticles', 'completedLessons', 'quizScores',
+        'reminders', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.userId)
+      && (data.userId == request.auth.uid || isAdmin())
+      && data.favoritePoses is list && data.favoritePoses.size() <= 50
+      && (data.favoritePoses.size() == 0 || data.favoritePoses[0] is string)
+      && data.completedPoses is list && data.completedPoses.size() <= 50
+      && (data.completedPoses.size() == 0 || data.completedPoses[0] is string)
+      && data.favoriteMeditations is list && data.favoriteMeditations.size() <= 50
+      && (data.favoriteMeditations.size() == 0 || data.favoriteMeditations[0] is string)
+      && data.bookmarkedArticles is list && data.bookmarkedArticles.size() <= 50
+      && (data.bookmarkedArticles.size() == 0 || data.bookmarkedArticles[0] is string)
+      && data.readArticles is list && data.readArticles.size() <= 50
+      && (data.readArticles.size() == 0 || data.readArticles[0] is string)
+      && data.completedLessons is list && data.completedLessons.size() <= 80
+      && (data.completedLessons.size() == 0 || data.completedLessons[0] is string)
+      && data.quizScores is map && data.quizScores.size() <= 20
+      && data.reminders is list && data.reminders.size() <= 10
+      && (data.reminders.size() == 0 || data.reminders[0] is map)
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidPracticeLog(data) {
+      return data.keys().hasAll([
+        'userId', 'type', 'itemId', 'title', 'category', 'durationMinutes', 'dateKey', 'notes', 'createdAt'
+      ])
+      && data.keys().hasOnly([
+        'userId', 'type', 'itemId', 'title', 'category', 'durationMinutes', 'dateKey', 'notes', 'createdAt'
+      ])
+      && isValidId(data.userId)
+      && data.userId == request.auth.uid
+      && data.type in ['yoga', 'meditation', 'breathing']
+      && isValidId(data.itemId)
+      && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+      && data.category is string && data.category.size() >= 1 && data.category.size() <= 80
+      && data.durationMinutes is int && data.durationMinutes >= 1 && data.durationMinutes <= 240
+      && isValidDateKey(data.dateKey)
+      && data.notes is string && data.notes.size() <= 500
+      && data.createdAt is timestamp;
+    }
+
+    function isValidMoodEntry(data) {
+      return data.keys().hasAll(['userId', 'mood', 'energyLevel', 'dateKey', 'note', 'createdAt'])
+      && data.keys().hasOnly(['userId', 'mood', 'energyLevel', 'dateKey', 'note', 'createdAt'])
+      && isValidId(data.userId)
+      && data.userId == request.auth.uid
+      && data.mood in ['Happy', 'Calm', 'Neutral', 'Stressed', 'Tired', 'Anxious']
+      && data.energyLevel is int && data.energyLevel >= 1 && data.energyLevel <= 5
+      && isValidDateKey(data.dateKey)
+      && data.note is string && data.note.size() <= 500
+      && data.createdAt is timestamp;
+    }
+
+    function isValidDailyPlan(data) {
+      return data.keys().hasAll([
+        'userId', 'dateKey', 'goal', 'availableMinutes', 'experienceLevel',
+        'preferredTime', 'items', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'userId', 'dateKey', 'goal', 'availableMinutes', 'experienceLevel',
+        'preferredTime', 'items', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.userId)
+      && (data.userId == request.auth.uid || isAdmin())
+      && isValidDateKey(data.dateKey)
+      && data.goal is string && data.goal.size() >= 1 && data.goal.size() <= 120
+      && data.availableMinutes is int && data.availableMinutes >= 5 && data.availableMinutes <= 240
+      && data.experienceLevel in ['Beginner', 'Intermediate', 'Advanced']
+      && data.preferredTime in ['Morning', 'Midday', 'Evening', 'Flexible']
+      && data.items is list && data.items.size() >= 1 && data.items.size() <= 12
+      && data.items[0] is map
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidAiConversation(data) {
+      return data.keys().hasAll(['userId', 'mode', 'language', 'title', 'messages', 'createdAt', 'updatedAt'])
+      && data.keys().hasOnly(['userId', 'mode', 'language', 'title', 'messages', 'createdAt', 'updatedAt'])
+      && isValidId(data.userId)
+      && (data.userId == request.auth.uid || isAdmin())
+      && data.mode in ['assistant', 'yoga-coach']
+      && data.language in ['English', 'Hindi', 'Marathi']
+      && data.title is string && data.title.size() >= 1 && data.title.size() <= 140
+      && data.messages is list && data.messages.size() >= 1 && data.messages.size() <= 40
+      && data.messages[0] is map
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidChallengeEnrollment(data) {
+      return data.keys().hasAll([
+        'userId', 'challengeId', 'title', 'durationDays', 'completedDays', 'status', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'userId', 'challengeId', 'title', 'durationDays', 'completedDays', 'status', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.userId)
+      && (data.userId == request.auth.uid || isAdmin())
+      && isValidId(data.challengeId)
+      && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+      && data.durationDays is int && data.durationDays >= 1 && data.durationDays <= 31
+      && data.completedDays is list && data.completedDays.size() <= 31
+      && (data.completedDays.size() == 0 || data.completedDays[0] is int)
+      && data.status in ['active', 'completed']
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomContent(data) {
+      return data.keys().hasAll([
+        'authorId', 'contentType', 'title', 'subtitle', 'category',
+        'difficulty', 'durationMinutes', 'body', 'published', 'createdAt', 'updatedAt'
+      ])
+      && data.keys().hasOnly([
+        'authorId', 'contentType', 'title', 'subtitle', 'category',
+        'difficulty', 'durationMinutes', 'body', 'published', 'createdAt', 'updatedAt'
+      ])
+      && isValidId(data.authorId)
+      && data.authorId == request.auth.uid
+      && data.contentType in ['asana', 'meditation', 'article', 'challenge']
+      && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+      && data.subtitle is string && data.subtitle.size() <= 240
+      && data.category is string && data.category.size() >= 1 && data.category.size() <= 80
+      && data.difficulty is string && data.difficulty.size() >= 1 && data.difficulty.size() <= 40
+      && data.durationMinutes is int && data.durationMinutes >= 1 && data.durationMinutes <= 180
+      && data.body is string && data.body.size() >= 1 && data.body.size() <= 4000
+      && data.published is bool
+      && data.createdAt is timestamp
+      && data.updatedAt is timestamp;
+    }
+
+    // --- Collection Rules ---
+    match /test/connection {
+      allow get: if true;
+      allow write: if false;
+    }
+
+    match /admins/{adminId} {
+      allow get: if isVerifiedUser() && isValidId(adminId) && (request.auth.uid == adminId || isBootstrapAdmin());
+      allow list: if isBootstrapAdmin();
+      allow write: if false;
+    }
+
+    match /userProfiles/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isBootstrapAdmin();
+      allow create: if isVerifiedUser() && isValidId(userId) && request.auth.uid == userId
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            request.auth.uid == userId && (
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'displayName', 'ageRange', 'experienceLevel', 'preferredPracticeTime',
+                'availableMinutes', 'primaryGoals', 'preferredStyles', 'themePreference', 'updatedAt'
+              ]) ||
+              incoming().diff(existing()).affectedKeys().hasOnly([
+                'waterGlassesToday', 'waterGoal', 'waterDateKey', 'updatedAt'
+              ])
+            )
+          )
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    match /userProgress/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (request.auth.uid == userId || isAdmin());
+      allow list: if isBootstrapAdmin();
+      allow create: if isVerifiedUser() && isValidId(userId) && request.auth.uid == userId
+        && isValidUserProgress(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(userId)
+        && isValidUserProgress(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            request.auth.uid == userId && incoming().diff(existing()).affectedKeys().hasOnly([
+              'favoritePoses', 'completedPoses', 'favoriteMeditations',
+              'bookmarkedArticles', 'readArticles', 'completedLessons',
+              'quizScores', 'reminders', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isAdmin() && isValidId(userId);
+    }
+
+    match /practiceLogs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId) && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isVerifiedUser() && isValidId(logId)
+        && isValidPracticeLog(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(logId) && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /moodEntries/{entryId} {
+      allow get: if isSignedIn() && isValidId(entryId) && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isVerifiedUser() && isValidId(entryId)
+        && isValidMoodEntry(incoming())
+        && incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isVerifiedUser() && isValidId(entryId) && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /dailyPlans/{planId} {
+      allow get: if isSignedIn() && isValidId(planId) && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isVerifiedUser() && isValidId(planId)
+        && isValidDailyPlan(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(planId)
+        && isValidDailyPlan(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+              'goal', 'availableMinutes', 'experienceLevel', 'preferredTime', 'items', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(planId) && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /aiConversations/{conversationId} {
+      allow get: if isSignedIn() && isValidId(conversationId) && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isVerifiedUser() && isValidId(conversationId)
+        && isValidAiConversation(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(conversationId)
+        && isValidAiConversation(incoming())
+        && incoming().userId == existing().userId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            existing().userId == request.auth.uid && incoming().diff(existing()).affectedKeys().hasOnly([
+              'title', 'language', 'messages', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(conversationId) && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /challengeEnrollments/{enrollmentId} {
+      allow get: if isSignedIn() && isValidId(enrollmentId) && (resource.data.userId == request.auth.uid || isAdmin());
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || isBootstrapAdmin());
+      allow create: if isVerifiedUser() && isValidId(enrollmentId)
+        && isValidChallengeEnrollment(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(enrollmentId)
+        && isValidChallengeEnrollment(incoming())
+        && incoming().userId == existing().userId
+        && incoming().challengeId == existing().challengeId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            existing().userId == request.auth.uid
+            && existing().status != 'completed'
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'completedDays', 'status', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if isVerifiedUser() && isValidId(enrollmentId) && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /customContent/{contentId} {
+      allow get: if isValidId(contentId) && (resource.data.published == true || isAdmin());
+      allow list: if resource.data.published == true || isBootstrapAdmin();
+      allow create: if isVerifiedUser() && isValidId(contentId) && isAdmin()
+        && isValidCustomContent(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isVerifiedUser() && isValidId(contentId) && isAdmin()
+        && isValidCustomContent(incoming())
+        && incoming().authorId == existing().authorId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'contentType', 'title', 'subtitle', 'category', 'difficulty',
+          'durationMinutes', 'body', 'published', 'updatedAt'
+        ]);
+      allow delete: if isVerifiedUser() && isValidId(contentId) && isAdmin();
+    }
+  }
+}

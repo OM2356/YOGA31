@@ -1,0 +1,179 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Personal wellness profile, fitness preferences, and daily hydration tracking for an authenticated user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "email": { "type": "string", "minLength": 3, "maxLength": 160 },
+        "photoURL": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "ageRange": { "type": "string", "enum": ["18-24", "25-34", "35-44", "45-54", "55+"] },
+        "experienceLevel": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced"] },
+        "preferredPracticeTime": { "type": "string", "enum": ["Morning", "Midday", "Evening", "Flexible"] },
+        "availableMinutes": { "type": "integer" },
+        "primaryGoals": { "type": "array", "description": "Up to 6 wellness goals" },
+        "preferredStyles": { "type": "array", "description": "Up to 6 preferred yoga/meditation styles" },
+        "waterGlassesToday": { "type": "integer" },
+        "waterGoal": { "type": "integer" },
+        "waterDateKey": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "themePreference": { "type": "string", "enum": ["light", "dark"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "displayName", "email", "experienceLevel", "preferredPracticeTime", "availableMinutes", "primaryGoals", "preferredStyles", "waterGlassesToday", "waterGoal", "waterDateKey", "themePreference", "createdAt", "updatedAt"]
+    },
+    "PracticeLog": {
+      "title": "PracticeLog",
+      "description": "Recorded completed yoga, meditation, or breathing practice session.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "type": { "type": "string", "enum": ["yoga", "meditation", "breathing"] },
+        "itemId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "durationMinutes": { "type": "integer" },
+        "dateKey": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "notes": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "type", "itemId", "title", "category", "durationMinutes", "dateKey", "notes", "createdAt"]
+    },
+    "MoodEntry": {
+      "title": "MoodEntry",
+      "description": "Daily emotional check-in and optional reflection note.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mood": { "type": "string", "enum": ["Happy", "Calm", "Neutral", "Stressed", "Tired", "Anxious"] },
+        "energyLevel": { "type": "integer" },
+        "dateKey": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "note": { "type": "string", "minLength": 0, "maxLength": 500 },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "mood", "energyLevel", "dateKey", "note", "createdAt"]
+    },
+    "DailyPlan": {
+      "title": "DailyPlan",
+      "description": "AI-assisted or user-customized daily wellness schedule with completion states.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "dateKey": { "type": "string", "minLength": 10, "maxLength": 10, "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+        "goal": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "availableMinutes": { "type": "integer" },
+        "experienceLevel": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced"] },
+        "preferredTime": { "type": "string", "enum": ["Morning", "Midday", "Evening", "Flexible"] },
+        "items": { "type": "array", "description": "Up to 12 scheduled wellness activities" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "dateKey", "goal", "availableMinutes", "experienceLevel", "preferredTime", "items", "createdAt", "updatedAt"]
+    },
+    "AiConversation": {
+      "title": "AiConversation",
+      "description": "Persisted AI Wellness Assistant or AI Yoga Coach session history.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "mode": { "type": "string", "enum": ["assistant", "yoga-coach"] },
+        "language": { "type": "string", "enum": ["English", "Hindi", "Marathi"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 140 },
+        "messages": { "type": "array", "description": "Up to 40 conversation messages" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "mode", "language", "title", "messages", "createdAt", "updatedAt"]
+    },
+    "ChallengeEnrollment": {
+      "title": "ChallengeEnrollment",
+      "description": "User enrollment and daily completion state for a multi-day wellness challenge.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "challengeId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "durationDays": { "type": "integer" },
+        "completedDays": { "type": "array", "description": "Up to 31 completed day numbers" },
+        "status": { "type": "string", "enum": ["active", "completed"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "challengeId", "title", "durationDays", "completedDays", "status", "createdAt", "updatedAt"]
+    },
+    "UserProgress": {
+      "title": "UserProgress",
+      "description": "Saved favorites, bookmarks, deep-dive lessons, quiz scores, and reminder preferences.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "favoritePoses": { "type": "array", "description": "Up to 50 pose IDs" },
+        "completedPoses": { "type": "array", "description": "Up to 50 pose IDs" },
+        "favoriteMeditations": { "type": "array", "description": "Up to 50 meditation IDs" },
+        "bookmarkedArticles": { "type": "array", "description": "Up to 50 article IDs" },
+        "readArticles": { "type": "array", "description": "Up to 50 article IDs" },
+        "completedLessons": { "type": "array", "description": "Up to 80 deep dive lesson IDs" },
+        "quizScores": { "type": "object", "description": "Map of programId to score integer" },
+        "reminders": { "type": "array", "description": "Up to 10 configured reminder rules" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "favoritePoses", "completedPoses", "favoriteMeditations", "bookmarkedArticles", "readArticles", "completedLessons", "quizScores", "reminders", "createdAt", "updatedAt"]
+    },
+    "CustomContent": {
+      "title": "CustomContent",
+      "description": "Admin-managed wellness catalog additions (asanas, meditations, articles, challenges).",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "contentType": { "type": "string", "enum": ["asana", "meditation", "article", "challenge"] },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "subtitle": { "type": "string", "minLength": 0, "maxLength": 240 },
+        "category": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "difficulty": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "durationMinutes": { "type": "integer" },
+        "body": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "published": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "contentType", "title", "subtitle", "category", "difficulty", "durationMinutes", "body", "published", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/userProfiles/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Owner-only wellness profile and preferences keyed by Firebase Auth UID."
+    },
+    "/practiceLogs/{logId}": {
+      "schema": { "$ref": "#/entities/PracticeLog" },
+      "description": "User-owned completed yoga, meditation, and breathing sessions."
+    },
+    "/moodEntries/{entryId}": {
+      "schema": { "$ref": "#/entities/MoodEntry" },
+      "description": "User-owned daily mood and energy check-ins."
+    },
+    "/dailyPlans/{planId}": {
+      "schema": { "$ref": "#/entities/DailyPlan" },
+      "description": "User-owned daily wellness schedules."
+    },
+    "/aiConversations/{conversationId}": {
+      "schema": { "$ref": "#/entities/AiConversation" },
+      "description": "User-owned AI Wellness Assistant & Yoga Coach conversation threads."
+    },
+    "/challengeEnrollments/{enrollmentId}": {
+      "schema": { "$ref": "#/entities/ChallengeEnrollment" },
+      "description": "User-owned challenge enrollments and daily completion logs."
+    },
+    "/userProgress/{userId}": {
+      "schema": { "$ref": "#/entities/UserProgress" },
+      "description": "User-owned favorites, bookmarks, Deep Dive lessons, quiz scores, and reminder preferences."
+    },
+    "/customContent/{contentId}": {
+      "schema": { "$ref": "#/entities/CustomContent" },
+      "description": "Admin-managed additional wellness catalog entries."
+    }
+  }
+}
